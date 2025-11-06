@@ -117,7 +117,7 @@
     // 🔹 Inicializar el escáner de QR
     const html5QrcodeScanner = new Html5QrcodeScanner(
       "reader",
-      { fps: 10, qrbox: 50 }
+      { fps: 10, qrbox: 25 }
     );
     html5QrcodeScanner.render(onScanSuccess, onScanError);
 
@@ -135,6 +135,7 @@
   </script>
 </body>
 </html>
+
 
 
 
