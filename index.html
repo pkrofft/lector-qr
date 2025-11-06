@@ -4,12 +4,14 @@
   <meta charset="UTF-8" />
   <title>Lector QR → Google Sheets</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Librería html5-qrcode desde CDN -->
+  <!-- Librería html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
       font-family: system-ui, sans-serif;
       padding: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
     }
     #reader {
       width: 100%;
@@ -20,85 +22,116 @@
       margin-top: 1rem;
       font-size: 0.9rem;
       white-space: pre-line;
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      min-height: 3rem;
+    }
+    #ultimo-qr {
+      margin-top: 1rem;
+      font-weight: bold;
+      font-size: 1rem;
     }
     button {
-      margin-top: 1rem;
-      padding: 0.5rem 1rem;
+      margin-top: 0.5rem;
+      padding: 0.6rem 1rem;
       font-size: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <h1>Lector QR → Google Sheets</h1>
-  <p>Apunta la cámara al código QR del carnet.</p>
+  <p>1. Apunta la cámara al código QR.<br>
+     2. Cuando aparezca el texto abajo, aprieta <strong>"Enviar a Google Sheets"</strong>.</p>
 
   <div id="reader"></div>
 
+  <div id="ultimo-qr">Último QR leído: (ninguno)</div>
+  <button id="btn-enviar">Enviar a Google Sheets</button>
   <button id="btn-clear">Limpiar estado</button>
 
   <div id="status"></div>
 
   <script>
-    // PON AQUÍ tu URL de Apps Script:
+    // 🔴 CAMBIA ESTO POR TU URL DE WEB APP (la que termina en /exec)
     const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwfQTiiNSE_Cg_FkvquD2kUKwPkBisd9gUuZQImm-NwzpuzIyqvbC2aPM6KnuTf-IDu/exec";
+
+    let ultimoQrLeido = null;
+
     const statusEl = document.getElementById("status");
-    const clearBtn = document.getElementById("btn-clear");
+    const ultimoQrEl = document.getElementById("ultimo-qr");
+    const btnEnviar = document.getElementById("btn-enviar");
+    const btnClear = document.getElementById("btn-clear");
 
     function logStatus(msg) {
       statusEl.textContent = msg + "\n" + statusEl.textContent;
     }
 
+    // 🔹 Esta función manda el QR al Google Sheet
     async function enviarAGoogleSheets(qrText) {
+      if (!qrText) {
+        logStatus("No hay QR para enviar.");
+        alert("No hay QR leído todavía.");
+        return;
+      }
+
       try {
         const payload = {
           qr: qrText,
           origen: "web-app"
         };
 
+        // Para depurar, dejamos SIN no-cors para ver errores
         const res = await fetch(WEBAPP_URL, {
           method: "POST",
-          mode: "no-cors", // opcional; si quieres leer la respuesta, quita esto
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify(payload)
         });
 
-        // Como usamos no-cors, puede que no tengamos res.ok;
-        // para efectos prácticos, asumimos que se envió.
-        logStatus("Enviado a Google Sheets: " + qrText);
+        const text = await res.text();
+        logStatus("Respuesta servidor: " + text);
+        alert("Enviado a Google Sheets:\n" + qrText);
       } catch (err) {
+        console.error(err);
         logStatus("Error al enviar: " + err);
+        alert("Error al enviar: " + err);
       }
     }
 
+    // 🔹 Callback cuando se lee un QR correctamente
     function onScanSuccess(decodedText, decodedResult) {
-      // Aquí tienes el texto del QR:
+      ultimoQrLeido = decodedText;
+      ultimoQrEl.textContent = "Último QR leído: " + decodedText;
       logStatus("Leído: " + decodedText);
-
-      // Enviar a Google Sheets
-      enviarAGoogleSheets(decodedText);
-
-      // Si solo quieres 1 lectura, puedes pausar el escáner:
-      // html5QrcodeScanner.clear();
+      // OJO: ya NO lo enviamos automáticamente, solo lo guardamos
     }
 
+    // 🔹 Errores de lectura (puedes ignorarlos)
     function onScanError(errorMessage) {
-      // Errores de lectura frecuentes, normalmente se ignoran
-      // logStatus("Error de lectura: " + errorMessage);
+      // No hace falta mostrar cada error, se llaman muy seguido
+      // console.log("Error scan:", errorMessage);
     }
 
-    // Inicializar el escáner
+    // 🔹 Inicializar el escáner de QR
     const html5QrcodeScanner = new Html5QrcodeScanner(
       "reader",
       { fps: 10, qrbox: 250 }
     );
     html5QrcodeScanner.render(onScanSuccess, onScanError);
 
-    clearBtn.addEventListener("click", () => {
+    // 🔹 Botón para enviar el último QR leído
+    btnEnviar.addEventListener("click", () => {
+      enviarAGoogleSheets(ultimoQrLeido);
+    });
+
+    // 🔹 Botón para limpiar mensajes
+    btnClear.addEventListener("click", () => {
       statusEl.textContent = "";
+      ultimoQrLeido = null;
+      ultimoQrEl.textContent = "Último QR leído: (ninguno)";
     });
   </script>
 </body>
 </html>
-
