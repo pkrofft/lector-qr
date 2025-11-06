@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lector QR → Google Sheets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Librería html5-qrcode desde CDN -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 1rem;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    #status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      white-space: pre-line;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lector QR → Google Sheets</h1>
+  <p>Apunta la cámara al código QR del carnet.</p>
+
+  <div id="reader"></div>
+
+  <button id="btn-clear">Limpiar estado</button>
+
+  <div id="status"></div>
+
+  <script>
+    // PON AQUÍ tu URL de Apps Script:
+    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwfQTiiNSE_Cg_FkvquD2kUKwPkBisd9gUuZQImm-NwzpuzIyqvbC2aPM6KnuTf-IDu/exec";
+
+    const statusEl = document.getElementById("status");
+    const clearBtn = document.getElementById("btn-clear");
+
+    function logStatus(msg) {
+      statusEl.textContent = msg + "\n" + statusEl.textContent;
+    }
+
+    async function enviarAGoogleSheets(qrText) {
+      try {
+        const payload = {
+          qr: qrText,
+          origen: "web-app"
+        };
+
+        const res = await fetch(WEBAPP_URL, {
+          method: "POST",
+          mode: "no-cors", // opcional; si quieres leer la respuesta, quita esto
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Como usamos no-cors, puede que no tengamos res.ok;
+        // para efectos prácticos, asumimos que se envió.
+        logStatus("Enviado a Google Sheets: " + qrText);
+      } catch (err) {
+        logStatus("Error al enviar: " + err);
+      }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      // Aquí tienes el texto del QR:
+      logStatus("Leído: " + decodedText);
+
+      // Enviar a Google Sheets
+      enviarAGoogleSheets(decodedText);
+
+      // Si solo quieres 1 lectura, puedes pausar el escáner:
+      // html5QrcodeScanner.clear();
+    }
+
+    function onScanError(errorMessage) {
+      // Errores de lectura frecuentes, normalmente se ignoran
+      // logStatus("Error de lectura: " + errorMessage);
+    }
+
+    // Inicializar el escáner
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: 250 }
+    );
+    html5QrcodeScanner.render(onScanSuccess, onScanError);
+
+    clearBtn.addEventListener("click", () => {
+      statusEl.textContent = "";
+    });
+  </script>
+</body>
+</html>
