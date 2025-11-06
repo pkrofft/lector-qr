@@ -41,8 +41,11 @@
 </head>
 <body>
   <h1>Lector QR → Google Sheets</h1>
-  <p>1. Apunta la cámara al código QR.<br>
-     2. Cuando aparezca el texto abajo, aprieta <strong>"Enviar a Google Sheets"</strong>.</p>
+  <p>
+    1. Apunta la cámara al código QR.<br>
+    2. Cuando aparezca el texto abajo, aprieta
+    <strong>"Enviar a Google Sheets"</strong>.
+  </p>
 
   <div id="reader"></div>
 
@@ -67,7 +70,7 @@
       statusEl.textContent = msg + "\n" + statusEl.textContent;
     }
 
-    // 🔹 Esta función manda el QR al Google Sheet
+    // 🔹 Enviar el QR al Google Sheet
     async function enviarAGoogleSheets(qrText) {
       if (!qrText) {
         logStatus("No hay QR para enviar.");
@@ -81,7 +84,6 @@
           origen: "web-app"
         };
 
-        // Para depurar, dejamos SIN no-cors para ver errores
         const res = await fetch(WEBAPP_URL, {
           method: "POST",
           headers: {
@@ -100,25 +102,35 @@
       }
     }
 
-    // 🔹 Callback cuando se lee un QR correctamente
+    // 🔹 Cuando se lee un QR con éxito
     function onScanSuccess(decodedText, decodedResult) {
+      // 👉 Evitar loop: si es el mismo texto, no hacemos nada
+      if (decodedText === ultimoQrLeido) {
+        return;
+      }
+
       ultimoQrLeido = decodedText;
       ultimoQrEl.textContent = "Último QR leído: " + decodedText;
       logStatus("Leído: " + decodedText);
-      // OJO: ya NO lo enviamos automáticamente, solo lo guardamos
     }
 
-    // 🔹 Errores de lectura (puedes ignorarlos)
+    // 🔹 Errores de lectura: los ignoramos para que NO salga "load failed"
     function onScanError(errorMessage) {
-      // No hace falta mostrar cada error, se llaman muy seguido
-      // console.log("Error scan:", errorMessage);
+      // NO mostramos nada a propósito
+      // Si quieres depurar en consola, podrías usar:
+      // console.warn("Scan error:", errorMessage);
     }
 
-    // 🔹 Inicializar el escáner de QR
+    // 🔹 Inicializar el escáner, con cuadrado más chico y sin logs verbosos
     const html5QrcodeScanner = new Html5QrcodeScanner(
       "reader",
-      { fps: 10, qrbox: 250 }
+      {
+        fps: 10,
+        qrbox: { width: 180, height: 180 } // cuadrado más pequeño
+      },
+      false // verbose = false -> menos mensajes internos
     );
+
     html5QrcodeScanner.render(onScanSuccess, onScanError);
 
     // 🔹 Botón para enviar el último QR leído
