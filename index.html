@@ -43,7 +43,7 @@
   <h1>Lector QR → Google Sheets</h1>
   <p>
     1. Apunta la cámara al código QR.<br>
-    2. Cuando aparezca el texto abajo, aprieta
+    2. Cuando veas el texto abajo, aprieta
     <strong>"Enviar a Google Sheets"</strong>.
   </p>
 
@@ -55,9 +55,19 @@
 
   <div id="status"></div>
 
+  <!-- 🔹 Formulario oculto que hace el POST al Apps Script -->
+  <form id="gsheet-form" action="" method="POST" target="hidden_iframe">
+    <input type="hidden" name="qr" id="input-qr" />
+    <input type="hidden" name="origen" value="web-app" />
+  </form>
+  <iframe name="hidden_iframe" style="display:none;"></iframe>
+
   <script>
-    // 🔴 CAMBIA ESTO POR TU URL DE WEB APP (la que termina en /exec)
+    // 🔴 PON AQUÍ tu URL del Web App (la que termina en /exec)
     const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwfQTiiNSE_Cg_FkvquD2kUKwPkBisd9gUuZQImm-NwzpuzIyqvbC2aPM6KnuTf-IDu/exec";
+
+    // Asignamos la URL al formulario
+    document.getElementById("gsheet-form").action = WEBAPP_URL;
 
     let ultimoQrLeido = null;
 
@@ -65,79 +75,59 @@
     const ultimoQrEl = document.getElementById("ultimo-qr");
     const btnEnviar = document.getElementById("btn-enviar");
     const btnClear = document.getElementById("btn-clear");
+    const form = document.getElementById("gsheet-form");
+    const inputQr = document.getElementById("input-qr");
 
     function logStatus(msg) {
       statusEl.textContent = msg + "\n" + statusEl.textContent;
     }
 
-// 🔹 Enviar el QR al Google Sheet usando FormData (más simple)
-async function enviarAGoogleSheets(qrText) {
-  if (!qrText) {
-    logStatus("No hay QR para enviar.");
-    alert("No hay QR leído todavía.");
-    return;
-  }
+    // 🔹 Enviar el QR al Google Sheet mediante el formulario
+    function enviarAGoogleSheets(qrText) {
+      if (!qrText) {
+        logStatus("No hay QR para enviar.");
+        alert("No hay QR leído todavía.");
+        return;
+      }
 
-  try {
-    const formData = new FormData();
-    formData.append("qr", qrText);
-    formData.append("origen", "web-app");
-
-    // Usamos mode: "no-cors" para que el navegador no se queje de CORS
-    await fetch(WEBAPP_URL, {
-      method: "POST",
-      body: formData,
-      mode: "no-cors"
-    });
-
-    // No podemos leer la respuesta por no-cors, pero la solicitud igual llega
-    logStatus("Petición enviada a Google Sheets (revisa la hoja).");
-    alert("Enviado a Google Sheets:\n" + qrText);
-  } catch (err) {
-    console.error(err);
-    logStatus("Error al enviar: " + err);
-    alert("Error al enviar: " + err);
-  }
-}
-
+      inputQr.value = qrText;  // ponemos el QR en el input oculto
+      form.submit();           // enviamos el formulario
+      logStatus("Formulario enviado a Google Sheets.");
+      alert("Enviado a Google Sheets:\n" + qrText);
+    }
 
     // 🔹 Cuando se lee un QR con éxito
     function onScanSuccess(decodedText, decodedResult) {
-      // 👉 Evitar loop: si es el mismo texto, no hacemos nada
-      if (decodedText === ultimoQrLeido) {
-        return;
-      }
+      // Evitar repetir el mismo QR en loop
+      if (decodedText === ultimoQrLeido) return;
 
       ultimoQrLeido = decodedText;
       ultimoQrEl.textContent = "Último QR leído: " + decodedText;
       logStatus("Leído: " + decodedText);
     }
 
-    // 🔹 Errores de lectura: los ignoramos para que NO salga "load failed"
+    // 🔹 Ignoramos los errores de lectura para no ver "load failed" del scanner
     function onScanError(errorMessage) {
-      // NO mostramos nada a propósito
-      // Si quieres depurar en consola, podrías usar:
       // console.warn("Scan error:", errorMessage);
     }
 
-    // 🔹 Inicializar el escáner, con cuadrado más chico y sin logs verbosos
+    // 🔹 Inicializar el escáner
     const html5QrcodeScanner = new Html5QrcodeScanner(
       "reader",
       {
         fps: 10,
         qrbox: { width: 180, height: 180 } // cuadrado más pequeño
       },
-      false // verbose = false -> menos mensajes internos
+      false // verbose
     );
-
     html5QrcodeScanner.render(onScanSuccess, onScanError);
 
-    // 🔹 Botón para enviar el último QR leído
+    // Botón para enviar el último QR leído
     btnEnviar.addEventListener("click", () => {
       enviarAGoogleSheets(ultimoQrLeido);
     });
 
-    // 🔹 Botón para limpiar mensajes
+    // Botón para limpiar mensajes
     btnClear.addEventListener("click", () => {
       statusEl.textContent = "";
       ultimoQrLeido = null;
@@ -146,4 +136,5 @@ async function enviarAGoogleSheets(qrText) {
   </script>
 </body>
 </html>
+
 
