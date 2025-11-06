@@ -70,37 +70,36 @@
       statusEl.textContent = msg + "\n" + statusEl.textContent;
     }
 
-    // 🔹 Enviar el QR al Google Sheet
-    async function enviarAGoogleSheets(qrText) {
-      if (!qrText) {
-        logStatus("No hay QR para enviar.");
-        alert("No hay QR leído todavía.");
-        return;
-      }
+// 🔹 Enviar el QR al Google Sheet usando FormData (más simple)
+async function enviarAGoogleSheets(qrText) {
+  if (!qrText) {
+    logStatus("No hay QR para enviar.");
+    alert("No hay QR leído todavía.");
+    return;
+  }
 
-      try {
-        const payload = {
-          qr: qrText,
-          origen: "web-app"
-        };
+  try {
+    const formData = new FormData();
+    formData.append("qr", qrText);
+    formData.append("origen", "web-app");
 
-        const res = await fetch(WEBAPP_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
+    // Usamos mode: "no-cors" para que el navegador no se queje de CORS
+    await fetch(WEBAPP_URL, {
+      method: "POST",
+      body: formData,
+      mode: "no-cors"
+    });
 
-        const text = await res.text();
-        logStatus("Respuesta servidor: " + text);
-        alert("Enviado a Google Sheets:\n" + qrText);
-      } catch (err) {
-        console.error(err);
-        logStatus("Error al enviar: " + err);
-        alert("Error al enviar: " + err);
-      }
-    }
+    // No podemos leer la respuesta por no-cors, pero la solicitud igual llega
+    logStatus("Petición enviada a Google Sheets (revisa la hoja).");
+    alert("Enviado a Google Sheets:\n" + qrText);
+  } catch (err) {
+    console.error(err);
+    logStatus("Error al enviar: " + err);
+    alert("Error al enviar: " + err);
+  }
+}
+
 
     // 🔹 Cuando se lee un QR con éxito
     function onScanSuccess(decodedText, decodedResult) {
@@ -147,3 +146,4 @@
   </script>
 </body>
 </html>
+
